@@ -1,0 +1,77 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                   Mini Modify SL & TP Fixed MT5 |
+//|                                 Copyright 2022, Forex Robot Easy Team       |
+//|                                       https://www.forexroboteasy.com       |
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input double StopLoss = 50; // Initial stop loss value
+input double TakeProfit = 100; // Initial take profit value
+
+// Define global variables
+int ticket; // Order ticket number
+bool modifyInProgress = false; // Flag to indicate if modification is in progress
+
+void OnTick()
+{
+   // Check if modification is in progress
+   if(modifyInProgress)
+   {
+      // Monitor order modification
+      if(!OrderSelect(ticket, SELECT_BY_TICKET))
+      {
+         Print('Failed to select order for modification');
+         modifyInProgress = false;
+         return;
+      }
+      
+      // Check if modification is completed
+      if(OrderStopLoss() == StopLoss && OrderTakeProfit() == TakeProfit)
+      {
+         Print('Order modification completed successfully');
+         modifyInProgress = false;
+         return;
+      }
+      
+      // Modify order
+      if(!OrderModify(ticket, OrderOpenPrice(), StopLoss, TakeProfit, 0, CLR_NONE))
+      {
+         Print('Failed to modify order. Error: ', GetLastError());
+         modifyInProgress = false;
+      }
+      
+      return;
+   }
+   
+   // Check if there is an open position
+   if(PositionSelect())
+   {
+      // Get the ticket of the open position
+      ticket = PositionGetTicket();
+      
+      // Modify the stop loss and take profit values
+      if(!OrderModify(ticket, OrderOpenPrice(), StopLoss, TakeProfit, 0, CLR_NONE))
+      {
+         Print('Failed to modify order. Error: ', GetLastError());
+         return;
+      }
+      
+      // Set modify in progress flag
+      modifyInProgress = true;
+      
+      return;
+   }
+   
+   // Open a new order if no open positions
+   ticket = OrderSend(Symbol(), OP_BUY, 0.01, Ask, 0, 0, 0, 'Mini Modify SL & TP Fixed MT5', 0, 0, CLR_NONE);
+   if(ticket <= 0)
+   {
+      Print('Failed to open order. Error: ', GetLastError());
+      return;
+   }
+   
+   // Set modify in progress flag
+   modifyInProgress = true;
+}
+
